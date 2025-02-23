@@ -241,6 +241,18 @@ require('lazy').setup({
     end,
   },
 
+  'Xuyuanp/nerdtree-git-plugin',
+
+  'f-person/git-blame.nvim',
+
+  {
+    'mbbill/undotree',
+    config = function()
+      vim.g.undotree_SetFocusWhenToggle = 1
+      vim.g.undotree_WindowLayout = 1
+    end,
+  },
+
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
   -- keys can be used to configure plugin behavior/loading/etc.
@@ -333,6 +345,7 @@ require('lazy').setup({
         { '<leader>w', group = '[W]orkspace' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+        { '<leader>u', '<cmd>UndotreeToggle<cr>', desc = 'UndoTree toggle', mode = { 'n' } },
       },
     },
   },
@@ -399,6 +412,15 @@ require('lazy').setup({
         --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
         --   },
         -- },
+        defaults = {
+          mappings = {
+            i = {
+              ['<cr>'] = function(bufnr)
+                require('telescope.actions.set').edit(bufnr, 'tab drop')
+              end,
+            },
+          },
+        },
         -- pickers = {}
         extensions = {
           ['ui-select'] = {
@@ -525,7 +547,47 @@ require('lazy').setup({
           -- Jump to the definition of the word under your cursor.
           --  This is where a variable was first declared, or where a function is defined, etc.
           --  To jump back, press <C-t>.
-          map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+
+          -- map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+          vim.keymap.set('n', 'gd', function()
+            local params = vim.lsp.util.make_position_params()
+            vim.lsp.buf_request(0, 'textDocument/definition', params, function(_, result)
+              if not result or vim.tbl_isempty(result) then
+                print 'Definition not found'
+                return
+              end
+
+              local target_uri = result[1].uri
+              local target_path = vim.uri_to_fname(target_uri)
+              local current_uri = vim.uri_from_bufnr(0)
+
+              if target_uri ~= current_uri then
+                -- Check if the target file is already open in a different tab
+                local tab_found = false
+                for tabnr = 1, vim.fn.tabpagenr '$' do
+                  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(tabnr)) do
+                    local bufnr = vim.api.nvim_win_get_buf(winid)
+                    if vim.api.nvim_buf_get_name(bufnr) == target_path then
+                      -- Switch to the tab that already has the file open
+                      vim.cmd(tabnr .. 'tabnext')
+                      tab_found = true
+                      break
+                    end
+                  end
+                  if tab_found then
+                    break
+                  end
+                end
+
+                -- Open a new tab only if the file isn't already open
+                if not tab_found then
+                  vim.cmd('tabnew ' .. vim.fn.fnameescape(target_path))
+                end
+              end
+
+              vim.lsp.util.jump_to_location(result[1])
+            end)
+          end, { buffer = event.buf, desc = 'LSP: ' .. '[G]oto [D]efinition' })
 
           -- Find references for the word under your cursor.
           map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
@@ -629,7 +691,7 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         -- gopls = {},
-        -- pyright = {},
+        pyright = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -705,7 +767,7 @@ require('lazy').setup({
       },
     },
     opts = {
-      notify_on_error = false,
+      notify_on_error = true,
       format_on_save = function(bufnr)
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
@@ -725,10 +787,12 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        python = { 'ruff_format' },
+        sql = { 'sqruff' },
+        json = { 'fixjson' },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'prettierd', 'prettier', stop_after_first = true },
       },
     },
   },
