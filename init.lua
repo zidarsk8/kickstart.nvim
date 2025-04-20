@@ -114,9 +114,9 @@ vim.opt.showmode = false
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
 --  See `:help 'clipboard'`
-vim.schedule(function()
-  vim.opt.clipboard = 'unnamedplus'
-end)
+-- vim.schedule(function()
+--   vim.opt.clipboard = 'unnamedplus'
+-- end)
 
 -- Enable break indent
 vim.opt.breakindent = true
@@ -420,8 +420,15 @@ require('lazy').setup({
               end,
             },
           },
+          layout_config = {
+            vertical = { width = 0.9 },
+          },
         },
-        -- pickers = {}
+        -- pickers = {
+        --   grep_string = {
+        --     theme = 'dropdown',
+        --   },
+        -- },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -564,12 +571,12 @@ require('lazy').setup({
               if target_uri ~= current_uri then
                 -- Check if the target file is already open in a different tab
                 local tab_found = false
-                for tabnr = 1, vim.fn.tabpagenr '$' do
-                  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(tabnr)) do
+                for _, tabpage in ipairs(vim.api.nvim_list_tabpages()) do
+                  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(tabpage)) do
                     local bufnr = vim.api.nvim_win_get_buf(winid)
                     if vim.api.nvim_buf_get_name(bufnr) == target_path then
                       -- Switch to the tab that already has the file open
-                      vim.cmd(tabnr .. 'tabnext')
+                      vim.cmd(tabpage .. 'tabnext')
                       tab_found = true
                       break
                     end
@@ -585,7 +592,7 @@ require('lazy').setup({
                 end
               end
 
-              vim.lsp.util.jump_to_location(result[1])
+              vim.lsp.util.show_document(result[1])
             end)
           end, { buffer = event.buf, desc = 'LSP: ' .. '[G]oto [D]efinition' })
 
