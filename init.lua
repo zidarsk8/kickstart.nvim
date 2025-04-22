@@ -557,7 +557,8 @@ require('lazy').setup({
 
           -- map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
           vim.keymap.set('n', 'gd', function()
-            local params = vim.lsp.util.make_position_params()
+            local encoding = vim.lsp.get_client_by_id(event.data.client_id).offset_encoding
+            local params = vim.lsp.util.make_position_params(0, encoding)
             vim.lsp.buf_request(0, 'textDocument/definition', params, function(_, result)
               if not result or vim.tbl_isempty(result) then
                 print 'Definition not found'
@@ -592,7 +593,7 @@ require('lazy').setup({
                 end
               end
 
-              vim.lsp.util.show_document(result[1])
+              vim.lsp.util.show_document(result[1], encoding)
             end)
           end, { buffer = event.buf, desc = 'LSP: ' .. '[G]oto [D]efinition' })
 
